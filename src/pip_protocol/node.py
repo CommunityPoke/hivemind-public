@@ -204,6 +204,8 @@ class Node:
                 ErrorCode.VERSION_UNSUPPORTED,
                 f"unsupported pip version {envelope.pip!r}; supported: {SUPPORTED_VERSIONS}",
             )
+        if envelope.to != self.instance_id:
+            raise PipError(ErrorCode.IDENTITY_MISMATCH, "envelope not addressed to this instance")
         if len(canonical_json(envelope.payload)) > self.policy.max_payload_bytes:
             raise PipError(ErrorCode.PAYLOAD_TOO_LARGE, "payload exceeds max_payload_bytes")
 
@@ -356,6 +358,7 @@ class Node:
                 envelope.idempotency_key,
                 response.model_dump(mode="json", by_alias=True),
                 self.policy.idempotency_ttl_seconds,
+                ref=envelope.id,
             )
         return response
 
@@ -367,6 +370,7 @@ class Node:
         )
 
     def _respond(self, envelope: Envelope, type: EnvelopeType, payload: BaseModel) -> Envelope:
+        payload = self.redactor.redact_payload(type, payload)
         return build_envelope(
             self.keypair,
             type=type,
@@ -387,6 +391,49 @@ class Node:
             EnvelopeType.RECEIPT,
             ReceiptPayload(ref=envelope.id, status=status, reason=reason),
         )
+
+    def error_for_raw(self, raw: dict[str, Any] | None, err: PipError) -> Envelope:
+        """Signed error envelope for an unparseable inbound payload.
+
+        Reuses ``_error_envelope`` logic with a synthetic ``to``/``id`` when the
+        raw data cannot be parsed into an Envelope.
+        """
+        to = "pip:unknown"
+        ref: str | None = None
+        if isinstance(raw, dict):
+            if isinstance(raw.get("from"), str):
+                to = raw["from"]
+            if isinstance(raw.get("id"), str):
+                ref = raw["id"]
+        payload = ErrorPayload(
+            code=err.code.value,
+            message=err.message,
+            ref=ref,
+            retryable=err.retryable,
+            supported_versions=list(SUPPORTED_VERSIONS)
+            if err.code == ErrorCode.VERSION_UNSUPPORTED
+            else None,
+        )
+        try:
+            return build_envelope(
+                self.keypair,
+                type=EnvelopeType.ERROR,
+                to=to,
+                payload=payload.model_dump(mode="json"),
+                clock=self.clock,
+            )
+        except PipError:
+            return Envelope(
+                pip=PROTOCOL_VERSION,
+                id="error",
+                type=EnvelopeType.ERROR,
+                from_=self.instance_id,
+                to=to,
+                ts=self.clock.now(),
+                expires=self.clock.now(),
+                nonce="AAAAAAAAAAAAAAAAAAAAAA",
+                payload=payload.model_dump(mode="json"),
+            )
 
     def _error_envelope(self, envelope: Envelope, err: PipError) -> Envelope:
         payload = ErrorPayload(

@@ -275,3 +275,34 @@ def test_envelope_parse_roundtrip(clock):
     env = a.build(EnvelopeType.MESSAGE, "pip:x", MessagePayload(subject="s", body="x"))
     env2 = Envelope.model_validate(env.model_dump(mode="json", by_alias=True))
     assert env2.id == env.id
+
+
+def test_envelope_wrong_addressee(clock):
+    """F1: B rejects an envelope addressed to C."""
+    a, b = make_nodes(clock)
+    c = KeyPair.generate()
+    env = a.build(EnvelopeType.MESSAGE, c.instance_id, MessagePayload(subject="s", body="x"))
+    _, err = b.handle(env)
+    assert err is not None and err.code == ErrorCode.IDENTITY_MISMATCH
+
+
+def test_data_response_redacted(clock):
+    """F2: outbound data responses pass through the redactor."""
+    consent = Consent(resource="data:notes", actions=["read"])
+    ka, kb = KeyPair.generate(), KeyPair.generate()
+    a = Node(ka, Policy(peers=[make_peer(kb, ["admin:*"])]), clock=clock)
+    b = Node(
+        kb,
+        Policy(
+            peers=[make_peer(ka, ["data:request"], [consent])],
+            redaction={"fields": ["email"]},
+        ),
+        clock=clock,
+        data_provider=DictDataProvider({"notes": [{"email": "a@b.c", "n": 1}]}),
+    )
+    env = a.build(EnvelopeType.DATA, b.instance_id, DataPayload(op="request", dataset="notes"))
+    resp, err = b.handle(env)
+    assert err is None
+    p = resp.typed_payload()
+    assert p.records == [{"email": "[REDACTED]", "n": 1}]
+    verify_signature(resp, b.keypair.public_key)

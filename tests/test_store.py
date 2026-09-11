@@ -88,3 +88,11 @@ def test_outbox_item_serialization(clock):
     item = OutboxItem(peer_id="p", envelope={}, next_attempt_at=clock.now())
     raw = item.model_dump(mode="json")
     assert OutboxItem.model_validate(raw).peer_id == "p"
+
+
+def test_find_receipt_by_ref(store):
+    receipt = {"payload": {"ref": "env-1", "status": "accepted"}}
+    store.put_idempotent("p", "k", receipt, 3600, ref="env-1")
+    assert store.find_receipt_by_ref("p", "env-1") == receipt
+    assert store.find_receipt_by_ref("p", "nope") is None
+    assert store.find_receipt_by_ref("other", "env-1") is None

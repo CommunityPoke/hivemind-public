@@ -48,7 +48,13 @@ class Outbox:
         return item
 
     def due(self) -> list[OutboxItem]:
-        return [OutboxItem.model_validate(raw) for raw in self.store.outbox_due(self.clock.now())]
+        return [
+            item
+            for item in (
+                OutboxItem.model_validate(raw) for raw in self.store.outbox_due(self.clock.now())
+            )
+            if not item.dead
+        ]
 
     def mark_failed(self, item: OutboxItem, err: str) -> OutboxItem:
         item.attempts += 1
@@ -57,6 +63,14 @@ class Outbox:
             item.dead = True
         delay = min(BACKOFF_BASE_SECONDS * (2 ** (item.attempts - 1)), BACKOFF_CAP_SECONDS)
         item.next_attempt_at = self.clock.now() + timedelta(seconds=delay)
+        self.store.outbox_update(item.model_dump(mode="json"))
+        return item
+
+    def mark_dead(self, item: OutboxItem, err: str) -> OutboxItem:
+        """Mark the item permanently failed (non-retryable error)."""
+        item.attempts = self.max_attempts
+        item.last_error = err
+        item.dead = True
         self.store.outbox_update(item.model_dump(mode="json"))
         return item
 

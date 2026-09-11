@@ -16,7 +16,16 @@ class Store(Protocol):
 
     def get_idempotent(self, peer: str, key: str) -> dict[str, Any] | None: ...
 
-    def put_idempotent(self, peer: str, key: str, receipt: dict[str, Any], ttl: int) -> None: ...
+    def put_idempotent(
+        self,
+        peer: str,
+        key: str,
+        receipt: dict[str, Any],
+        ttl: int,
+        ref: str | None = None,
+    ) -> None: ...
+
+    def find_receipt_by_ref(self, peer: str, ref: str) -> dict[str, Any] | None: ...
 
     def purge(self, now: datetime) -> None: ...
 
@@ -66,12 +75,27 @@ class MemoryStore:
                 return None
             return receipt
 
-    def put_idempotent(self, peer: str, key: str, receipt: dict[str, Any], ttl: int) -> None:
+    def put_idempotent(
+        self,
+        peer: str,
+        key: str,
+        receipt: dict[str, Any],
+        ttl: int,
+        ref: str | None = None,
+    ) -> None:
         with self._lock:
             self._idempotent[(peer, key)] = (
                 _ts(datetime.now(timezone.utc)) + ttl,
                 receipt,
             )
+
+    def find_receipt_by_ref(self, peer: str, ref: str) -> dict[str, Any] | None:
+        with self._lock:
+            now = _ts(datetime.now(timezone.utc))
+            for (p, _), (expires, receipt) in self._idempotent.items():
+                if p == peer and expires >= now and receipt.get("payload", {}).get("ref") == ref:
+                    return receipt
+            return None
 
     def purge(self, now: datetime) -> None:
         with self._lock:
@@ -109,10 +133,12 @@ CREATE TABLE IF NOT EXISTS nonces (
 CREATE TABLE IF NOT EXISTS idempotent (
     peer TEXT NOT NULL,
     key TEXT NOT NULL,
+    ref TEXT,
     expires_at REAL NOT NULL,
     receipt TEXT NOT NULL,
     PRIMARY KEY (peer, key)
 );
+CREATE INDEX IF NOT EXISTS idx_idempotent_ref ON idempotent (peer, ref);
 CREATE TABLE IF NOT EXISTS outbox (
     id TEXT PRIMARY KEY,
     item TEXT NOT NULL,
@@ -153,13 +179,30 @@ class SqliteStore:
                 return None
             return json.loads(row[1])  # type: ignore[no-any-return]
 
-    def put_idempotent(self, peer: str, key: str, receipt: dict[str, Any], ttl: int) -> None:
+    def put_idempotent(
+        self,
+        peer: str,
+        key: str,
+        receipt: dict[str, Any],
+        ttl: int,
+        ref: str | None = None,
+    ) -> None:
         with self._lock, self._conn:
             self._conn.execute(
-                "INSERT OR REPLACE INTO idempotent (peer, key, expires_at, receipt)"
-                " VALUES (?, ?, ?, ?)",
-                (peer, key, _ts(datetime.now(timezone.utc)) + ttl, json.dumps(receipt)),
+                "INSERT OR REPLACE INTO idempotent (peer, key, ref, expires_at, receipt)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (peer, key, ref, _ts(datetime.now(timezone.utc)) + ttl, json.dumps(receipt)),
             )
+
+    def find_receipt_by_ref(self, peer: str, ref: str) -> dict[str, Any] | None:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT expires_at, receipt FROM idempotent WHERE peer = ? AND ref = ?",
+                (peer, ref),
+            ).fetchone()
+            if row is None or row[0] < _ts(datetime.now(timezone.utc)):
+                return None
+            return json.loads(row[1])  # type: ignore[no-any-return]
 
     def purge(self, now: datetime) -> None:
         with self._lock, self._conn:
