@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "poke-stdio": {
+      "command": "pip-node",
+      "args": ["serve-mcp", "--transport", "stdio"],
+      "env": {
+        "PIP_PRIVATE_KEY_FILE": "./data/instance.key",
+        "PIP_POLICY_FILE": "./config/policy.yaml",
+        "PIP_STORE_URL": "memory://",
+        "PIP_DISPLAY_NAME": "poke"
+      }
+    },
+    "poke-http": {
+      "url": "http://127.0.0.1:8642/mcp",
+      "comment": "streamable-http variant: run `pip-node serve-mcp --transport streamable-http` and set Authorization header if PIP_HTTP_BEARER_TOKEN is configured"
+    }
+  }
+}

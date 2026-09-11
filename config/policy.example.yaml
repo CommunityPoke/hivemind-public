@@ -1,0 +1,21 @@
+# Example PIP policy file (spec §5). Copy to config/policy.yaml and edit.
+# Contains NO real keys or secrets.
+allow_unknown_peers: false
+default_scopes: []
+peers:
+  - instance_id: pip:examplepeer00000000000000
+    public_key: ed25519:REPLACE_WITH_PEER_PUBLIC_KEY
+    display_name: "Alice's Poke"
+    scopes: [messages:send, data:request]
+    consents:
+      - resource: data:notes
+        actions: [read]
+        expires: 2027-01-01T00:00:00Z
+        granted_by: operator
+rate_limits:
+  per_peer_per_minute: 60
+  burst: 20
+max_payload_bytes: 262144
+redaction:
+  fields: [email, phone, ssn, api_key, token, password, secret]
+  patterns: ["\\b[\\w.+-]+@[\\w-]+\\.[\\w.]+\\b"]
