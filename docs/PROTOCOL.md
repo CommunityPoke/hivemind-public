@@ -222,6 +222,7 @@ Settings via environment (`pydantic-settings`, prefix `PIP_`):
 | `PIP_POLICY_FILE` | `./config/policy.yaml` | |
 | `PIP_STORE_URL` | `memory://` | or `sqlite:///data/pip.db` |
 | `PIP_HTTP_HOST` / `PIP_HTTP_PORT` | `127.0.0.1` / `8642` | |
+| `PIP_MCP_PORT` | `8643` | streamable-http MCP port |
 | `PIP_PUBLIC_HTTP_URL` / `PIP_PUBLIC_MCP_URL` | unset | advertised endpoints |
 | `PIP_HTTP_BEARER_TOKEN` | unset | optional transport gate |
 | `PIP_MAX_CLOCK_SKEW_SECONDS` | `300` | |

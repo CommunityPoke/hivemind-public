@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     store_url: str = "memory://"
     http_host: str = "127.0.0.1"
     http_port: int = 8642
+    mcp_port: int = 8643
     public_http_url: str | None = None
     public_mcp_url: str | None = None
     http_bearer_token: str | None = None

@@ -4,6 +4,7 @@ import json
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
 
 from .config import Settings
 from .errors import ErrorCode, PipError
@@ -150,6 +151,37 @@ def create_mcp_server(node: Node, settings: Settings | None = None) -> FastMCP:
     return server
 
 
+def build_mcp_http_app(server: FastMCP, bearer_token: str | None = None) -> Starlette:
+    """Wrap the streamable-http app with /healthz and an optional bearer gate.
+
+    /healthz is exempt from the bearer check (health probes carry no tokens).
+    """
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request
+    from starlette.responses import JSONResponse
+    from starlette.routing import Mount, Route
+
+    from .transport.http import bearer_ok
+
+    inner = server.streamable_http_app()
+
+    async def healthz(request: Request) -> JSONResponse:
+        return JSONResponse({"status": "ok", "version": "pip/1.0", "transport": "mcp"})
+
+    class _Bearer(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
+            if request.url.path != "/healthz" and not bearer_ok(
+                request.headers.get("authorization"), bearer_token
+            ):
+                return JSONResponse({"error": "unauthorized"}, status_code=401)
+            return await call_next(request)
+
+    app = Starlette(routes=[Route("/healthz", healthz), Mount("/", app=inner)])
+    if bearer_token is not None:
+        app.add_middleware(_Bearer)
+    return app
+
+
 def run_mcp(
     server: FastMCP,
     transport: Literal["stdio", "streamable-http"] = "stdio",
@@ -161,21 +193,6 @@ def run_mcp(
     if transport == "stdio":
         server.run("stdio")
         return
-    app = server.streamable_http_app()
-    if bearer_token is not None:
-        from starlette.middleware.base import BaseHTTPMiddleware
-        from starlette.requests import Request
-        from starlette.responses import JSONResponse
-
-        from .transport.http import bearer_ok
-
-        class _Bearer(BaseHTTPMiddleware):
-            async def dispatch(self, request: Request, call_next):  # type: ignore[no-untyped-def]
-                if not bearer_ok(request.headers.get("authorization"), bearer_token):
-                    return JSONResponse({"error": "unauthorized"}, status_code=401)
-                return await call_next(request)
-
-        app.add_middleware(_Bearer)
     import uvicorn
 
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(build_mcp_http_app(server, bearer_token), host=host, port=port)
