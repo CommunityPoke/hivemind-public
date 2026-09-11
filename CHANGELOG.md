@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+- Added `PIP_MCP_PORT` (default 8643) — MCP streamable-http now binds its own port.
+- MCP streamable-http gains a `/healthz` endpoint exempt from the bearer gate.
+- Production deployment: multi-stage `Dockerfile` (non-root, healthcheck),
+  `docker-compose.yml` (loopback-only ports, read-only fs, cap_drop),
+  `docker/entrypoint.sh`, `deploy/` (deploy.sh, Caddyfile, systemd units),
+  `docs/DEPLOYMENT.md`.
+- `SqliteStore` sets a 5s busy timeout for multi-process WAL access.
+
 ## 1.0.0
 
 Initial release of the Poke Interconnect Protocol (PIP) v1.

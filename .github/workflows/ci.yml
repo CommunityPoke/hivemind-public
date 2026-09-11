@@ -29,3 +29,35 @@ jobs:
         run: .venv/bin/mypy src
       - name: Pytest
         run: .venv/bin/pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t poke-interconnect:ci .
+      - name: Validate compose
+        run: docker compose config -q
+      - name: Run container
+        run: >-
+          docker run -d --name pip-ci
+          -e PIP_ALLOW_INSECURE_KEY_PERMS=1
+          -p 127.0.0.1:8642:8642
+          poke-interconnect:ci
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8642/healthz && break || sleep 1
+          done
+          for i in $(seq 1 30); do
+            s=$(docker inspect --format '{{.State.Health.Status}}' pip-ci)
+            echo "health: $s"; [ "$s" = healthy ] && exit 0; sleep 1
+          done
+          docker logs pip-ci; exit 1
+      - name: Check handshake
+        run: >-
+          curl -sf http://127.0.0.1:8642/.well-known/pip |
+          python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["type"]=="handshake"'
+      - name: Cleanup
+        if: always()
+        run: docker logs pip-ci; docker rm -f pip-ci
