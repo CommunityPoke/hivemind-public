@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Create venv and install
+        run: |
+          uv venv .venv --python ${{ matrix.python-version }}
+          uv pip install --python .venv/bin/python -e .[dev]
+      - name: Ruff check
+        run: .venv/bin/ruff check .
+      - name: Ruff format
+        run: .venv/bin/ruff format --check .
+      - name: Mypy
+        run: .venv/bin/mypy src
+      - name: Pytest
+        run: .venv/bin/pytest -q
