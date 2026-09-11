@@ -21,6 +21,9 @@ dependencies = [
     "prometheus-client>=0.20",
 ]
 
+[project.scripts]
+pip-node = "pip_protocol.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest",
@@ -42,6 +45,10 @@ select = ["E", "F", "I", "B", "UP", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
+"examples/**" = ["S101"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.mypy]
 python_version = "3.10"
