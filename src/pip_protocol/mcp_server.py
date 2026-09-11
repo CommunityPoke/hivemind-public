@@ -176,7 +176,10 @@ def build_mcp_http_app(server: FastMCP, bearer_token: str | None = None) -> Star
                 return JSONResponse({"error": "unauthorized"}, status_code=401)
             return await call_next(request)
 
-    app = Starlette(routes=[Route("/healthz", healthz), Mount("/", app=inner)])
+    app = Starlette(
+        routes=[Route("/healthz", healthz), Mount("/", app=inner)],
+        lifespan=inner.router.lifespan_context,
+    )
     if bearer_token is not None:
         app.add_middleware(_Bearer)
     return app

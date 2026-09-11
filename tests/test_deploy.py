@@ -69,7 +69,32 @@ def test_mcp_healthz_no_token():
     assert resp.json() == {"status": "ok", "version": "pip/1.0", "transport": "mcp"}
 
 
-def test_mcp_healthz_exempt_and_mcp_gated():
+_MCP_INIT = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {"name": "test", "version": "0"},
+    },
+}
+_MCP_HEADERS = {"Accept": "application/json, text/event-stream"}
+
+
+def _mcp_body(resp):
+    import json
+
+    if resp.headers["content-type"].startswith("text/event-stream"):
+        for line in resp.text.splitlines():
+            if line.startswith("data:"):
+                return json.loads(line[len("data:") :])
+        raise AssertionError("no data line in SSE response")
+    return resp.json()
+
+
+def test_mcp_initialize_end_to_end():
+    """Real MCP initialize POST exercises the propagated lifespan."""
     from starlette.testclient import TestClient
 
     from pip_protocol.identity import KeyPair
@@ -77,13 +102,17 @@ def test_mcp_healthz_exempt_and_mcp_gated():
     from pip_protocol.node import Node
 
     node = Node(KeyPair.generate())
-    app = build_mcp_http_app(
-        create_mcp_server(node),
-        bearer_token="tok123",  # noqa: S106
-    )
-    client = TestClient(app, raise_server_exceptions=False)
-    assert client.get("/healthz").status_code == 200  # probes carry no token
-    assert client.post("/mcp", json={}).status_code == 401
-    # authorized requests pass the gate (session manager needs a real lifespan)
-    resp = client.post("/mcp", json={}, headers={"Authorization": "Bearer tok123"})  # noqa: S106
-    assert resp.status_code != 401
+    app = build_mcp_http_app(create_mcp_server(node), bearer_token="tok123")  # noqa: S106
+    # loopback Host passes MCP's DNS-rebinding guard; context runs lifespan
+    # Host must match MCP allowed_hosts pattern "127.0.0.1:*" (port required)
+    with TestClient(app, base_url="http://127.0.0.1:8643") as client:
+        assert client.get("/healthz").status_code == 200
+        assert client.post("/mcp", json=_MCP_INIT, headers=_MCP_HEADERS).status_code == 401
+        resp = client.post(
+            "/mcp",
+            json=_MCP_INIT,
+            headers={**_MCP_HEADERS, "Authorization": "Bearer tok123"},  # noqa: S106
+        )
+        assert resp.status_code == 200, resp.text
+        body = _mcp_body(resp)
+        assert body["result"]["serverInfo"]["name"] == "pip-v1"

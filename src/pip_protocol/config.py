@@ -1,5 +1,6 @@
 """Runtime settings via environment, prefix PIP_ (spec §12)."""
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,3 +21,9 @@ class Settings(BaseSettings):
     idempotency_ttl_seconds: int = 86400
     log_level: str = "INFO"
     allow_insecure_key_perms: bool = False
+
+    @field_validator("public_http_url", "public_mcp_url", "http_bearer_token", mode="before")
+    @classmethod
+    def _empty_is_none(cls, v):  # type: ignore[no-untyped-def]
+        # an empty value in .env files must not enable features
+        return None if v == "" else v
