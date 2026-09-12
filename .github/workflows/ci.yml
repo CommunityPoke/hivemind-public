@@ -26,7 +26,7 @@ jobs:
       - name: Ruff format
         run: .venv/bin/ruff format --check .
       - name: Mypy
-        run: .venv/bin/mypy src
+        run: .venv/bin/mypy src main.py
       - name: Pytest
         run: .venv/bin/pytest -q
 

@@ -54,6 +54,24 @@ Both services share the `pip-data` volume (same key + sqlite store; WAL mode
 plus a 5s busy timeout make the concurrent access safe). Ports bind to
 `127.0.0.1` only — never publish 8642/8643 on a public interface.
 
+## Single-port / PaaS mode
+
+`pip-node serve-all` serves the full HTTP API **and** MCP on
+`PIP_HTTP_HOST:PIP_HTTP_PORT` (the MCP endpoint is `/mcp`). Use it on
+platforms that expose a single port with TLS terminated by the platform —
+e.g. Fly.io (`deploy/fly.toml.example`, or run `uvicorn main:app` which
+honors `PORT` and derives public URLs from `FLY_APP_NAME`).
+
+```bash
+docker run -d -v pip-data:/data -v $PWD/config/policy.yaml:/config/policy.yaml:ro \
+  -p 127.0.0.1:8642:8642 -e PIP_HEALTH_PORT=8642 poke-interconnect serve-all
+```
+
+- Set `PIP_HTTP_HOST=0.0.0.0` only behind a TLS-terminating platform proxy.
+- Set `PIP_PUBLIC_HTTP_URL=https://<host>` and
+  `PIP_PUBLIC_MCP_URL=https://<host>/mcp` so the identity document advertises
+  the right endpoints (`main.py` derives these automatically on Fly.io).
+
 ## TLS
 
 Terminate TLS at a reverse proxy; PIP v1 has no in-transport encryption.

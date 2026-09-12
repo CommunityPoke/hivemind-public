@@ -12,6 +12,9 @@ case "$cmd" in
     serve-http)
         exec pip-node serve-http
         ;;
+    serve-all)
+        exec pip-node serve-all
+        ;;
     serve-mcp)
         # HEALTHCHECK reads PIP_HEALTH_PORT from the container env — set it
         # per-service in compose (or -e PIP_HEALTH_PORT=8643 for docker run).
