@@ -57,7 +57,7 @@ def _cmd_serve_mcp(args: argparse.Namespace) -> int:
         server,
         args.transport,
         host=settings.http_host,
-        port=settings.http_port,
+        port=settings.mcp_port,
         bearer_token=settings.http_bearer_token,
     )
     return 0

@@ -1,0 +1,11 @@
+# Example Caddyfile: TLS reverse proxy in front of PIP.
+# PIP binds its ports to loopback only; terminate TLS here.
+# Set PIP_PUBLIC_HTTP_URL / PIP_PUBLIC_MCP_URL to the public https URLs below.
+
+poke.example.com {
+    reverse_proxy 127.0.0.1:8642
+}
+
+poke-mcp.example.com {
+    reverse_proxy 127.0.0.1:8643
+}

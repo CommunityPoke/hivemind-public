@@ -1,0 +1,18 @@
+# /etc/systemd/system/pip-mcp.service — PIP MCP transport (streamable-http)
+[Unit]
+Description=PIP node (MCP streamable-http transport)
+After=network.target
+
+[Service]
+User=pip
+Group=pip
+EnvironmentFile=/etc/pip-node/env
+ExecStart=/opt/pip-node/.venv/bin/pip-node serve-mcp --transport streamable-http
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/pip-node
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

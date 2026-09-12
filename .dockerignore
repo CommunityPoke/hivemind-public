@@ -1,0 +1,15 @@
+.git
+.venv
+venv
+data
+tests
+*.key
+.env
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+docs
+examples
+deploy
+docker-compose.yml

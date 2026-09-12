@@ -92,11 +92,19 @@ Prompts: `pip_compose_message(to, subject, intent)`,
 | `PIP_POLICY_FILE` | `./config/policy.yaml` | YAML or JSON |
 | `PIP_STORE_URL` | `memory://` | or `sqlite:///data/pip.db` |
 | `PIP_HTTP_HOST` / `PIP_HTTP_PORT` | `127.0.0.1` / `8642` | loopback by default |
+| `PIP_MCP_PORT` | `8643` | streamable-http MCP port |
 | `PIP_PUBLIC_HTTP_URL` / `PIP_PUBLIC_MCP_URL` | unset | advertised endpoints |
 | `PIP_HTTP_BEARER_TOKEN` | unset | optional transport gate |
 | `PIP_MAX_CLOCK_SKEW_SECONDS` | `300` | |
 | `PIP_IDEMPOTENCY_TTL_SECONDS` | `86400` | |
 | `PIP_LOG_LEVEL` | `INFO` | JSON structured logs |
+
+## Deployment
+
+Container image, compose stack, TLS proxy examples, and a systemd unit live in
+`Dockerfile`, `docker-compose.yml`, `docker/`, and `deploy/`. See
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md); quick path:
+`./deploy/deploy.sh up`.
 
 ## Security model (summary)
 

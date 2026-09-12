@@ -1,0 +1,54 @@
+services:
+  pip-http:
+    build: .
+    command: ["serve-http"]
+    ports:
+      - "127.0.0.1:8642:8642"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # these must beat env_file defaults inside a container
+      PIP_HEALTH_PORT: "8642"
+      PIP_HTTP_HOST: "0.0.0.0"
+      PIP_STORE_URL: "sqlite:////data/pip.db"
+    volumes:
+      - pip-data:/data
+      - ./config/policy.yaml:/config/policy.yaml:ro
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  pip-mcp:
+    build: .
+    command: ["serve-mcp"]
+    ports:
+      - "127.0.0.1:8643:8643"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PIP_HEALTH_PORT: "8643"
+      PIP_HTTP_HOST: "0.0.0.0"
+      PIP_STORE_URL: "sqlite:////data/pip.db"
+    volumes:
+      # same volume → same identity key; sqlite WAL + busy timeout handle
+      # concurrent access from both processes
+      - pip-data:/data
+      - ./config/policy.yaml:/config/policy.yaml:ro
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  pip-data:

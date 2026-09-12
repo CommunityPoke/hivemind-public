@@ -1,3 +1,5 @@
+.env
+config/policy.yaml
 .venv/
 venv/
 data/

@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS outbox (
 class SqliteStore:
     def __init__(self, path: str) -> None:
         self._lock = threading.Lock()
-        self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn = sqlite3.connect(path, check_same_thread=False, timeout=5)
         self._conn.execute("PRAGMA journal_mode=WAL")
         with self._conn:
             self._conn.executescript(_SCHEMA)
