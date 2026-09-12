@@ -46,6 +46,19 @@ def _cmd_serve_http(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_serve_all(args: argparse.Namespace) -> int:
+    import uvicorn
+
+    from .transport.combined import create_combined_app
+
+    settings = Settings()
+    configure_logging(settings.log_level)
+    node = build_node_from_settings(settings)
+    app = create_combined_app(node, settings)
+    uvicorn.run(app, host=settings.http_host, port=settings.http_port)
+    return 0
+
+
 def _cmd_serve_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import create_mcp_server, run_mcp
 
@@ -112,6 +125,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("serve-http", help="run the HTTP transport")
     p.set_defaults(func=_cmd_serve_http)
+
+    p = sub.add_parser("serve-all", help="single-port mode: HTTP plus MCP at /mcp")
+    p.set_defaults(func=_cmd_serve_all)
 
     p = sub.add_parser("serve-mcp", help="run the MCP transport")
     p.add_argument("--transport", choices=["stdio", "streamable-http"], default="stdio")

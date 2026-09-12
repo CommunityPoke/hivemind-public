@@ -37,9 +37,14 @@ def unauthorized() -> JSONResponse:
     return JSONResponse({"error": "unauthorized"}, status_code=401)
 
 
-def create_app(node: Node, settings: Settings | None = None) -> FastAPI:
+def create_app(
+    node: Node,
+    settings: Settings | None = None,
+    *,
+    lifespan: Any = None,
+) -> FastAPI:
     settings = settings or Settings()
-    app = FastAPI(title="poke-interconnect", version="1.0.0")
+    app = FastAPI(title="poke-interconnect", version="1.0.0", lifespan=lifespan)
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):  # type: ignore[no-untyped-def]

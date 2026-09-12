@@ -42,6 +42,7 @@ PIP_PRIVATE_KEY_FILE=./data/instance.key PIP_POLICY_FILE=./config/policy.yaml \
   pip-node serve-http                                   # HTTP on 127.0.0.1:8642
 pip-node serve-mcp --transport stdio                    # MCP over stdio
 pip-node serve-mcp --transport streamable-http          # MCP over HTTP
+pip-node serve-all                                      # one port: HTTP + MCP at /mcp
 ```
 
 Other CLI commands: `pip-node identity`, `pip-node sign`, `pip-node send`
@@ -82,6 +83,10 @@ Tools: `pip_handshake`, `pip_send_message`, `pip_exchange_data`,
 Resources: `pip://identity`, `pip://capabilities`, `pip://policy/scopes`.
 Prompts: `pip_compose_message(to, subject, intent)`,
 `pip_request_data(dataset, purpose)`.
+
+`pip-node serve-all` runs both transports on `PIP_HTTP_PORT` (single-port/PaaS
+mode — see `docs/DEPLOYMENT.md`); the MCP endpoint is then `/mcp` on the same
+port as the HTTP API.
 
 ## Configuration (§12)
 

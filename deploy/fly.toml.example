@@ -1,0 +1,22 @@
+# Example fly.toml for the single-port combined mode (`serve-all`).
+# Fly terminates TLS; PIP listens on 0.0.0.0:8642 inside the VM.
+app = "your-pip-node"  # replace with your Fly app name
+
+[http_service]
+  internal_port = 8642
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+
+  [[http_service.checks]]
+    path = "/healthz"
+    interval = "30s"
+    timeout = "3s"
+
+[mounts]
+  source = "pip_data"
+  destination = "/data"
+
+[env]
+  PIP_HTTP_HOST = "0.0.0.0"
+  # PIP_HTTP_BEARER_TOKEN: set via `fly secrets set` — never commit it.
