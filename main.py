@@ -21,6 +21,9 @@ if settings.public_http_url is None and os.environ.get("FLY_APP_NAME"):
     settings.public_mcp_url = f"{base}/mcp"
 if os.environ.get("PORT"):
     settings.http_port = int(os.environ["PORT"])
+if os.environ.get("FLY_APP_NAME") or os.environ.get("PORT"):
+    # platform proxy in front: bind all interfaces and accept the public Host header
+    settings.http_host = "0.0.0.0"  # noqa: S104
 _default_key = Settings.model_fields["private_key_file"].default
 if settings.private_key_file == _default_key and Path("/data").is_dir():
     if os.access("/data", os.W_OK):
